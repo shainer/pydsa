@@ -26,7 +26,7 @@ dsa_key = {
     'priv': 7}
 
 
-def _random_s(min, max):
+def _random_s(minNum, maxNum):
     """
     Helper function to select a random number.
     :param min: smallest random number
@@ -34,13 +34,14 @@ def _random_s(min, max):
     :return: random number
     """
     s = -1
-    digits = random.randint(len(str(min)), len(str(max)))
+    digits = random.randint(len(str(minNum)), len(str(maxNum)))
     while True:
         u = map(ord, os.urandom(digits))
         if u == None:
             continue
+
         s = int(''.join(str(x) for x in u)[:digits])
-        if s <= max and s >= min:
+        if s <= maxNum and s >= minNum:
             break
     return s
 
@@ -97,37 +98,20 @@ def _mod_inverse(a, b):
     return mod_set[4] % B
 
 
-def modexp_lr_k_ary(a, b, n, k=5):
-    """
-    Compute a ** b (mod n)
-        K-ary LR method, with a customizable 'k'.
-
-    This efficient modular exponentiation algorithm was
-    implemented by Eli Bendersky
-
-    http://eli.thegreenplace.net/2009/03/28/efficient-modular-exponentiation-algorithms/
-
-    :param a: base
-    :param b: exponent
-    :param n: modulo
-    :param k: customizeable k
-    :return: Modular exponentation
-    """
-    base = 2 << (k - 1)
-    # Precompute the table of exponents
-    table = [1] * base
-    for i in xrange(1, base):
-        table[i] = table[i - 1] * a % n
-    # Just like the binary LR method, just with a
-    # different base
-    #
-    r = 1
-    for digit in reversed(_digits_of_n(b, base)):
-        for i in xrange(k):
-            r = r * r % n
-        if digit:
-            r = r * table[digit] % n
-    return r
+# Taken from
+# http://stackoverflow.com/questions/5486204/fast-modulo-calculations-in-python-and-ruby
+def modexp(g, u, p):
+   """Computes s = (g ^ u) mod p
+   Args are base, exponent, modulus
+   (see Bruce Schneier's book, _Applied Cryptography_ p. 244)
+   """
+   s = 1
+   while u != 0:
+      if u & 1:
+         s = (s * g) % p
+      u >>= 1
+      g = (g * g) % p
+   return s
 
 
 def _digits_of_n(n, b):
@@ -195,8 +179,8 @@ def dsa_sign(q, p, g, x, message):
     s1 = 0
     s2 = 0
     while True:
-        modexp = modexp_lr_k_ary(g, s, p)
-        s1 = modexp % q
+        m = modexp(g, s, p)
+        s1 = m % q
         if s1 == 0:
             s = _random_s(1, q)
             continue
